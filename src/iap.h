@@ -52,6 +52,6 @@ void GPIO_Cfg_init(void);
 u8 PC0_Check(void);
 void USART1_CFG(u32 baudrate);
 void UART_Rx_Deal(void);
-
+void UART1_SendData(u8 data);
 #endif
 

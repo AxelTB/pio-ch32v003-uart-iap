@@ -6,7 +6,7 @@
  * Description        : IAP
  *******************************************************************************
  * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
- * Attention: This software (modified or not) and binary are used for 
+ * Attention: This software (modified or not) and binary are used for
  * microcontroller manufactured by Nanjing Qinheng Microelectronics.
  *******************************************************************************/
 #include "iap.h"
@@ -16,16 +16,15 @@
 
 /******************************************************************************/
 
-#define FLASH_Base   0x08000000
-#define USBD_DATA_SIZE               64
+#define FLASH_Base 0x08000000
+#define USBD_DATA_SIZE 64
 u32 Program_addr = FLASH_Base;
 u32 Verity_addr = FLASH_Base;
 u8 Verity_Star_flag = 0;
 u8 Fast_Program_Buf[128];
 u16 CodeLen = 0;
-u8 End_Flag = 0;
 u8 EP2_Rx_Buffer[USBD_DATA_SIZE];
-#define  isp_cmd_t   ((isp_cmd  *)EP2_Rx_Buffer)
+#define isp_cmd_t ((isp_cmd *)EP2_Rx_Buffer)
 
 /*********************************************************************
  * @fn      USART1_CFG
@@ -35,22 +34,20 @@ u8 EP2_Rx_Buffer[USBD_DATA_SIZE];
  * @return
  */
 
-
 void USART1_CFG(u32 baudrate)
 {
 
-    GPIOD->CFGLR=0X48B44444;/* Set GPIOD Mode,Speed,USART_Parity */
+    GPIOD->CFGLR = 0X48B44444; /* Set GPIOD Mode,Speed,USART_Parity */
     GPIOD->BCR = (((uint32_t)0x01) << 6);
     USART1->CTLR2 |= USART_StopBits_1;
 
-    USART1->CTLR1=0X200C; /* Set USART mode,WordLength,GPIO_Pin */
+    USART1->CTLR1 = 0X200C; /* Set USART mode,WordLength,GPIO_Pin */
 
     USART1->CTLR3 |= USART_HardwareFlowControl_None;
 
-    USART1->BRR = 0X34;  /* Set 460800 baudrate */
+    USART1->BRR = 0X34; /* Set 460800 baudrate */
 
     USART1->CTLR1 |= ((uint16_t)0x2000); /* Enables the specified USART peripheral */
-
 }
 
 /*********************************************************************
@@ -68,71 +65,79 @@ u8 RecData_Deal(void)
 
     Lenth = isp_cmd_t->Len;
 
-    switch ( isp_cmd_t->Cmd) {
-        case CMD_IAP_ERASE:
-            FLASH_Unlock_Fast();
-            FLASH_EraseAllPages();
-            s = ERR_SCUESS;
-            break;
+    switch (isp_cmd_t->Cmd)
+    {
+    case CMD_IAP_ERASE:
+        FLASH_Unlock_Fast();
+        FLASH_EraseAllPages();
+        return ERR_SCUESS;
+        break;
 
-        case CMD_IAP_PROM:
-            for (i = 0; i < Lenth; i++) {
-                Fast_Program_Buf[CodeLen + i] = isp_cmd_t->data[i];
-            }
-            CodeLen += Lenth;
-            if (CodeLen >= 64) {
+    case CMD_IAP_PROM:
+        for (i = 0; i < Lenth; i++)
+        {
+            Fast_Program_Buf[CodeLen + i] = isp_cmd_t->data[i];
+        }
+        CodeLen += Lenth;
+        if (CodeLen >= 64)
+        {
 
-
-                CH32_IAP_Program(Program_addr, (u32*) Fast_Program_Buf);
-                CodeLen -= 64;
-                for (i = 0; i < CodeLen; i++) {
-                    Fast_Program_Buf[i] = Fast_Program_Buf[64 + i];
-                }
-
-                Program_addr += 0x40;
-
-            }
-            s = ERR_SCUESS;
-            break;
-
-        case CMD_IAP_VERIFY:
-
-            if (Verity_Star_flag == 0) {
-                Verity_Star_flag = 1;
-
-                for (i = 0; i < (64 - CodeLen); i++) {
-                    Fast_Program_Buf[CodeLen + i] = 0xFF;
-                }
-
-
-                CH32_IAP_Program(Program_addr, (u32*) Fast_Program_Buf);
-                CodeLen = 0;
+            CH32_IAP_Program(Program_addr, (u32 *)Fast_Program_Buf);
+            CodeLen -= 64;
+            for (i = 0; i < CodeLen; i++)
+            {
+                Fast_Program_Buf[i] = Fast_Program_Buf[64 + i];
             }
 
-            s = ERR_SCUESS;
-            for (i = 0; i < Lenth; i++) {
-                if (isp_cmd_t->data[i] != *(u8*) (Verity_addr + i)) {
-                    s = ERR_ERROR;
-                    break;
-                }
+            Program_addr += 0x40;
+        }
+        s = ERR_SCUESS;
+        break;
+
+    case CMD_IAP_VERIFY:
+
+        if (Verity_Star_flag == 0)
+        {
+            Verity_Star_flag = 1;
+
+            for (i = 0; i < (64 - CodeLen); i++)
+            {
+                Fast_Program_Buf[CodeLen + i] = 0xFF;
             }
 
-            Verity_addr += Lenth;
+            CH32_IAP_Program(Program_addr, (u32 *)Fast_Program_Buf);
+            CodeLen = 0;
+        }
 
-            break;
+        s = ERR_SCUESS;
+        for (i = 0; i < Lenth; i++)
+        {
+            if (isp_cmd_t->data[i] != *(u8 *)(Verity_addr + i))
+            {
+                s = ERR_ERROR;
+                break;
+            }
+        }
 
-        case CMD_IAP_END:
-            Verity_Star_flag = 0;
-            End_Flag = 1;
-            Program_addr = FLASH_Base;
-            Verity_addr = FLASH_Base;
+        Verity_addr += Lenth;
 
-            s = ERR_End;
-            break;
+        break;
 
-        default:
-            s = ERR_ERROR;
-            break;
+    case CMD_IAP_END:
+        /*Verity_Star_flag = 0;
+        Program_addr = FLASH_Base;
+        Verity_addr = FLASH_Base;
+
+        s = ERR_End;
+        break;*/
+        //RCC_ClearFlag();
+        SystemReset_StartMode(Start_Mode_USER);
+        NVIC_SystemReset();
+        break;
+
+    default:
+        s = ERR_ERROR;
+        break;
     }
 
     return s;
@@ -148,12 +153,9 @@ u8 RecData_Deal(void)
 void GPIO_Cfg_init(void)
 {
 
-
-   GPIOC->CFGLR&=~0x4;
-   GPIOC->CFGLR=0x8;
-   GPIOC->BSHR = ((uint32_t)0x01);
-
-
+    GPIOC->CFGLR &= ~0x4;
+    GPIOC->CFGLR = 0x8;
+    GPIOC->BSHR = ((uint32_t)0x01);
 }
 
 /*********************************************************************
@@ -169,26 +171,26 @@ u8 PC0_Check(void)
     u8 i;
     GPIO_Cfg_init();
 
-    if((GPIOC->INDR & GPIO_Pin_0) != (uint32_t)Bit_RESET)
+    if ((GPIOC->INDR & GPIO_Pin_0) != (uint32_t)Bit_RESET)
     {
-                i = (uint8_t)Bit_SET;
+        i = (uint8_t)Bit_SET;
     }
     else
     {
-                i = (uint8_t)Bit_RESET;
+        i = (uint8_t)Bit_RESET;
     }
 
-    if (i == 0) {
-    Delay_Ms(100);
-   if (i == 0)
-   {
-         return 0;
-   }
+    if (i == 0)
+    {
+        Delay_Ms(100);
+        if (i == 0)
+        {
+            return 0;
+        }
     }
 
     return 1;
 }
-
 
 /*********************************************************************
  * @fn      UART3_SendMultiyData
@@ -199,13 +201,14 @@ u8 PC0_Check(void)
  *
  * @return  none
  */
-void UART1_SendMultiyData(u8* pbuf, u8 num)
+void UART1_SendMultiyData(u8 *pbuf, u8 num)
 {
     u8 i = 0;
 
-    while(i<num)
+    while (i < num)
     {
-        while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
+        while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
+            ;
         USART_SendData(USART1, pbuf[i]);
         i++;
     }
@@ -222,9 +225,9 @@ void UART1_SendMultiyData(u8* pbuf, u8 num)
  */
 void UART1_SendData(u8 data)
 {
-    while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
+    while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
+        ;
     USART_SendData(USART1, data);
-
 }
 
 /*********************************************************************
@@ -236,8 +239,9 @@ void UART1_SendData(u8 data)
  */
 u8 Uart1_Rx(void)
 {
-    while( USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET);
-    return USART_ReceiveData( USART1);
+    while (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET)
+        ;
+    return USART_ReceiveData(USART1);
 }
 
 /*********************************************************************
@@ -265,10 +269,10 @@ void UART_Rx_Deal(void)
             isp_cmd_t->Rev[1] = Uart1_Rx();
             Data_add += isp_cmd_t->Rev[1];
 
-            if ((isp_cmd_t->Cmd == CMD_IAP_PROM)
-                    || (isp_cmd_t->Cmd == CMD_IAP_VERIFY))
+            if ((isp_cmd_t->Cmd == CMD_IAP_PROM) || (isp_cmd_t->Cmd == CMD_IAP_VERIFY))
             {
-                for (i = 0; i < isp_cmd_t->Len; i++) {
+                for (i = 0; i < isp_cmd_t->Len; i++)
+                {
                     isp_cmd_t->data[i] = Uart1_Rx();
                     Data_add += isp_cmd_t->data[i];
                 }
@@ -295,4 +299,3 @@ void UART_Rx_Deal(void)
         }
     }
 }
-

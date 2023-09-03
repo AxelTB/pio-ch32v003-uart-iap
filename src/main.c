@@ -4,11 +4,11 @@
  * Version            : V1.0.0
  * Date               : 2022/11/21
  * Description        : Main program body.
-*********************************************************************************
-* Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
-* Attention: This software (modified or not) and binary are used for 
-* microcontroller manufactured by Nanjing Qinheng Microelectronics.
-*******************************************************************************/
+ *********************************************************************************
+ * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
+ * Attention: This software (modified or not) and binary are used for
+ * microcontroller manufactured by Nanjing Qinheng Microelectronics.
+ *******************************************************************************/
 /*
  *@Note
 IAP upgrade routine:
@@ -26,20 +26,6 @@ reset button to run the APP program.
 #include "iap.h"
 
 /*********************************************************************
- * @fn      IAP_2_APP
- *
- * @brief   IAP_2_APP program.
- *
- * @return  none
- */
-void IAP_2_APP(void)
-{
-    RCC_ClearFlag();
-    SystemReset_StartMode(Start_Mode_USER);
-    NVIC_SystemReset();
-}
-
-/*********************************************************************
  * @fn      main
  *
  * @brief   Main program.
@@ -48,21 +34,24 @@ void IAP_2_APP(void)
  */
 int main(void)
 {
-    RCC->APB2PCENR |= RCC_APB2Periph_GPIOD| RCC_APB2Periph_USART1|RCC_APB2Periph_GPIOC;/* Enable GPIOD��USART1�� GPIOC  clock */
-      USART1_CFG(460800);
+    RCC->APB2PCENR |= RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOC; /* Enable GPIOD��USART1�� GPIOC  clock */
+    USART1_CFG(460800);
 
-    if(PC0_Check() == 0)
+    if (PC0_Check() == 0)
     {
-            IAP_2_APP();
-            while(1);
+        RCC_ClearFlag();
+        SystemReset_StartMode(Start_Mode_USER);
+        NVIC_SystemReset();
+        while (1)
+            ;
     }
 
-    while(1)
+    while (1)
     {
-        if(USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET)
+        //UART1_SendData('f');
+        if (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET)
         {
             UART_Rx_Deal();
-
         }
     }
 }
